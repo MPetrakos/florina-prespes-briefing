@@ -1,36 +1,69 @@
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
 
-const SOURCE_GUIDE = `
-ΠΡΩΤΕΥΟΥΣΕΣ ΠΗΓΕΣ / ΤΟΠΙΚΑ ΜΜΕ
-- Νέα Φλώρινα — neaflorina.gr
+const SOURCE_CATEGORIES = {
+  local_media: {
+    label: 'Τοπικά ΜΜΕ',
+    guide: `- Νέα Φλώρινα — neaflorina.gr
 - ΕΡΤ Φλώρινας — ertnews.gr/news/perifereiakoi-stathmoi/florina
 - Ελεύθερο Βήμα / FlorinaPress — florinapress.gr
 - Ράδιο Λέχοβο — radio-lehovo.gr
 - Floriniotika — floriniotika.gr
-- Περισκόπιο Αμυνταίου — eperiskopio.blogspot.com
-
-ΘΕΣΜΙΚΕΣ / ΠΡΩΤΟΓΕΝΕΙΣ
-- Δήμος Πρεσπών — prespes.gr
+- Περισκόπιο Αμυνταίου — eperiskopio.blogspot.com`
+  },
+  regional_media: {
+    label: 'Περιφερειακά ΜΜΕ',
+    guide: `- Kozan.gr — kozan.gr
+- KozaniMedia — kozanimedia.gr
+- EordaiaLive — eordaialive.com
+- Άλλα αξιόπιστα περιφερειακά ΜΜΕ Δυτικής Μακεδονίας μόνο όταν είναι άμεσα συναφή με την Π.Ε. Φλώρινας.`
+  },
+  institutions: {
+    label: 'Αυτοδιοίκηση & θεσμικές',
+    guide: `- Δήμος Πρεσπών — prespes.gr
 - Δήμος Φλώρινας — cityoflorina.gr
 - Δήμος Αμυνταίου — amyntaio.gr
 - ΠΕ Φλώρινας — florina.pdm.gov.gr
 - Περιφέρεια Δυτικής Μακεδονίας — pdm.gov.gr
-- ΟΦΥΠΕΚΑ — necca.gov.gr
+- Διαύγεια — diavgeia.gov.gr / et.diavgeia.gov.gr`
+  },
+  prespes_environment: {
+    label: 'Πρέσπες & περιβάλλον',
+    guide: `- ΟΦΥΠΕΚΑ — necca.gov.gr
+- Εταιρία Προστασίας Πρεσπών και οι επίσημες ψηφιακές της πηγές
+- Άλλες αξιόπιστες πρωτογενείς πηγές για Εθνικό Πάρκο, νερά, Natura 2000, βιοποικιλότητα, δάση και διασυνοριακή λεκάνη Πρεσπών.`
+  },
+  economy_funding: {
+    label: 'Οικονομία, έργα & χρηματοδοτήσεις',
+    guide: `- Πρόγραμμα Δίκαιης Αναπτυξιακής Μετάβασης — dam.gov.gr και επίσημες διαχειριστικές σελίδες
 - Επιμελητήριο Φλώρινας — ebef.gr
-- Υπουργείο Πολιτισμού / Εφορεία Αρχαιοτήτων Φλώρινας — culture.gov.gr
-- Ελληνική Αστυνομία — astynomia.gr
+- ΑΝΦΛΩ / Αναπτυξιακή Φλώρινας και επίσημες σχετικές ανακοινώσεις
+- Επίσημες πηγές ΕΣΠΑ, Interreg, ΠΔΕ και άλλων προγραμμάτων όταν η πράξη αφορά Φλώρινα ή Πρέσπες.`
+  },
+  safety: {
+    label: 'Πολιτική προστασία & ασφάλεια',
+    guide: `- Ελληνική Αστυνομία — astynomia.gr
 - Πυροσβεστικό Σώμα — fireservice.gr
-- Πρόγραμμα Δίκαιης Αναπτυξιακής Μετάβασης — dam.gov.gr και σχετικές επίσημες κυβερνητικές/διαχειριστικές σελίδες
-- Διαύγεια — diavgeia.gov.gr / et.diavgeia.gov.gr όταν υπάρχουν σχετικές πράξεις
+- Επίσημες πηγές πολιτικής προστασίας της Περιφέρειας / ΠΕ Φλώρινας όταν είναι σχετικές με συμβάντα, απαγορεύσεις, κινδύνους ή έκτακτες ανάγκες.`
+  },
+  culture_education: {
+    label: 'Πολιτισμός & εκπαίδευση',
+    guide: `- Υπουργείο Πολιτισμού / Εφορεία Αρχαιοτήτων Φλώρινας — culture.gov.gr
+- Πανεπιστήμιο Δυτικής Μακεδονίας — uowm.gr και επίσημες μονάδες / τμήματα στη Φλώρινα
+- Συναφείς επίσημες πηγές πολιτισμού, αρχαιολογίας και εκπαίδευσης όταν αφορούν την Π.Ε. Φλώρινας ή τις Πρέσπες.`
+  }
+};
 
-ΠΕΡΙΦΕΡΕΙΑΚΑ / ΣΥΜΠΛΗΡΩΜΑΤΙΚΑ
-- Kozan.gr — kozan.gr
-- KozaniMedia — kozanimedia.gr
-- EordaiaLive — eordaialive.com
+function sourceGuideFor(keys) {
+  return keys.map(key => {
+    const item = SOURCE_CATEGORIES[key];
+    return `### ${item.label}\n${item.guide}`;
+  }).join('\n\n');
+}
 
-ΕΙΔΙΚΑ ΓΙΑ ΠΡΕΣΠΕΣ
-- Εταιρία Προστασίας Πρεσπών και λοιπές αξιόπιστες πρωτογενείς πηγές για το Εθνικό Πάρκο, τα νερά, Natura, βιοποικιλότητα και διασυνοριακή λεκάνη.
-`;
+function sourceCategoryLabel(keys) {
+  return keys.map(key => SOURCE_CATEGORIES[key]?.label).filter(Boolean).join(' · ');
+}
+
 
 const focusInstructions = {
   all: 'Κάλυψε όλα τα ουσιώδη θέματα, αλλά δώσε μεγαλύτερο βάρος σε όσα επηρεάζουν άμεσα ή έμμεσα τον Δήμο Πρεσπών.',
@@ -131,13 +164,34 @@ const responseSchema = {
   required: ['title', 'period_label', 'generated_at', 'executive_summary', 'stories', 'watch_next', 'additional_sources']
 };
 
+function validateResponseId(value) {
+  return typeof value === 'string' && /^resp_[A-Za-z0-9_-]+$/.test(value);
+}
+
+function periodLabelFor(hours) {
+  return ({
+    12: 'Τελευταίες 12 ώρες',
+    24: 'Τελευταίες 24 ώρες',
+    72: 'Τελευταίες 3 ημέρες',
+    168: 'Τελευταίες 7 ημέρες',
+    720: 'Τελευταίες 30 ημέρες'
+  })[hours] || 'Τελευταίες 24 ώρες';
+}
+
+async function retrieveResponse(apiKey, responseId) {
+  return fetch(`${OPENAI_URL}/${encodeURIComponent(responseId)}`, {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+}
+
 export default async (request) => {
   if (request.method !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonResponse(500, {
-      error: 'Λείπει το OPENAI_API_KEY. Πρόσθεσέ το στο Netlify → Site configuration → Environment variables και ξανακάνε deploy.'
+      error: 'Λείπει το OPENAI_API_KEY. Πρόσθεσέ το στο Netlify → Project configuration → Environment variables και ξανακάνε deploy.'
     });
   }
 
@@ -150,19 +204,69 @@ export default async (request) => {
 
   const allowedHours = [12, 24, 72, 168, 720];
   const hours = allowedHours.includes(Number(body.hours)) ? Number(body.hours) : 24;
-  const focus = focusInstructions[body.focus] ? body.focus : 'all';
   const minImportance = importanceRank[body.minImportance] ? body.minImportance : 'medium';
+  const requestedSourceCategories = Array.isArray(body.sourceCategories) ? body.sourceCategories : [];
+  const sourceCategories = [...new Set(requestedSourceCategories)].filter(key => SOURCE_CATEGORIES[key]);
+  if (!sourceCategories.length) {
+    return jsonResponse(400, { error: 'Επίλεξε τουλάχιστον μία έγκυρη κατηγορία πηγών.' });
+  }
+
+  // POLL: retrieve an OpenAI background response. This call is quick and therefore
+  // stays well below Netlify's 60-second synchronous function limit.
+  if (body.action === 'status') {
+    if (!validateResponseId(body.responseId)) {
+      return jsonResponse(400, { error: 'Μη έγκυρο response ID.' });
+    }
+
+    let upstream;
+    try {
+      upstream = await retrieveResponse(apiKey, body.responseId);
+    } catch (error) {
+      return jsonResponse(502, { error: `Αποτυχία ελέγχου κατάστασης OpenAI: ${error.message}` });
+    }
+
+    const raw = await upstream.json().catch(() => null);
+    if (!upstream.ok) {
+      return jsonResponse(upstream.status, {
+        error: raw?.error?.message || `OpenAI API error (${upstream.status}).`
+      });
+    }
+
+    if (['queued', 'in_progress'].includes(raw?.status)) {
+      return jsonResponse(202, { status: raw.status });
+    }
+
+    if (raw?.status !== 'completed') {
+      const detail = raw?.error?.message || raw?.incomplete_details?.reason || raw?.status || 'unknown';
+      return jsonResponse(502, { error: `Το briefing δεν ολοκληρώθηκε (${detail}).` });
+    }
+
+    const text = extractOutputText(raw);
+    if (!text) return jsonResponse(502, { error: 'Το μοντέλο ολοκλήρωσε την εργασία αλλά δεν επέστρεψε briefing.' });
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch {
+      return jsonResponse(502, { error: 'Το briefing επέστρεψε σε μη αναμενόμενη μορφή.' });
+    }
+
+    const minRank = importanceRank[minImportance];
+    result.stories = (result.stories || []).filter(s => importanceRank[s.importance] >= minRank);
+    result.generated_at = `Δημιουργήθηκε ${dateTimeInAthens(new Date())} (ώρα Ελλάδας)`;
+    result.period_label = periodLabelFor(hours);
+    result.source_categories_label = sourceCategoryLabel(sourceCategories);
+
+    return jsonResponse(200, result);
+  }
+
+  // START: launch the slower web-research job in OpenAI background mode and
+  // return its ID immediately. The browser will poll the status above.
+  const focus = focusInstructions[body.focus] ? body.focus : 'all';
   const now = new Date();
   const endDateTime = dateTimeInAthens(now);
   const startDateTime = dateTimeInAthens(shiftHours(now, -hours));
-  const windowLabels = {
-    12: 'Τελευταίες 12 ώρες',
-    24: 'Τελευταίες 24 ώρες',
-    72: 'Τελευταίες 3 ημέρες',
-    168: 'Τελευταίες 7 ημέρες',
-    720: 'Τελευταίες 30 ημέρες'
-  };
-  const periodLabel = windowLabels[hours];
+  const periodLabel = periodLabelFor(hours);
 
   const prompt = `
 Ετοίμασε ένα αυστηρά τεκμηριωμένο briefing για την Περιφερειακή Ενότητα Φλώρινας με ιδιαίτερη έμφαση στον Δήμο Πρεσπών.
@@ -173,18 +277,18 @@ export default async (request) => {
 ΕΣΤΙΑΣΗ
 ${focusInstructions[focus]}
 
-ΠΗΓΕΣ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ
-${SOURCE_GUIDE}
+ΕΠΙΛΕΓΜΕΝΕΣ ΚΑΤΗΓΟΡΙΕΣ ΠΗΓΩΝ
+${sourceGuideFor(sourceCategories)}
 
 ΚΑΝΟΝΕΣ ΕΡΓΑΣΙΑΣ
-1. Χρησιμοποίησε web search και έλεγξε πολλές από τις παραπάνω πηγές, όχι μόνο μία ή δύο.
+1. Χρησιμοποίησε web search και περιόρισε την έρευνα και τις τελικές παραπομπές στις παραπάνω επιλεγμένες κατηγορίες πηγών. Μην χρησιμοποιήσεις πηγή από μη επιλεγμένη κατηγορία μόνο επειδή εμφανίζεται ψηλά στην αναζήτηση. Έλεγξε αρκετές από τις επιλεγμένες πηγές, όχι μόνο μία ή δύο. Προτεραιότητα στην ποιότητα και τη συνάφεια αντί για εξαντλητικό crawling.
 2. Προτίμησε πρωτογενείς θεσμικές πηγές όταν υπάρχει επίσημη ανακοίνωση. Τοπικό δημοσίευμα μπορεί να χρησιμοποιείται ως συμπληρωματική πηγή.
 3. Κάνε deduplication: το ίδιο δελτίο Τύπου ή η ίδια είδηση που αναδημοσιεύεται σε πολλά sites να εμφανίζεται ως ΕΝΑ θέμα με πολλαπλές πηγές.
 4. Απόρριψε πανελλαδικές ειδήσεις που δεν έχουν ειδική σύνδεση με Φλώρινα, Αμύνταιο ή Πρέσπες.
 5. Απόρριψε κοινωνικές αγγελίες, κηδείες, γενικές αθλητικές ανακοινώσεις και χαμηλής αξίας εκδηλώσεις, εκτός αν έχουν σαφή δημόσια/στρατηγική σημασία.
 6. Για κάθε θέμα δώσε importance = high / medium / low ως προς τη χρησιμότητά του για έναν Δήμο όπως ο Δήμος Πρεσπών. High = άμεση ενέργεια/ευκαιρία/κίνδυνος/απόφαση ή σημαντική πολιτική εξέλιξη. Medium = χρήσιμη ενημέρωση με πιθανή επίπτωση. Low = περιφερειακό context χωρίς άμεση δράση.
 7. Η επιλογή χρήστη απαιτεί ελάχιστη σημασία "${minImportance}". Μην επιστρέψεις θέματα χαμηλότερα από αυτό το επίπεδο.
-8. Κράτησε 5-12 πραγματικά σημαντικά θέματα. Αν υπάρχουν λιγότερα, επέστρεψε λιγότερα. Μην γεμίζεις τεχνητά το briefing.
+8. Κράτησε 5-10 πραγματικά σημαντικά θέματα. Αν υπάρχουν λιγότερα, επέστρεψε λιγότερα. Μην γεμίζεις τεχνητά το briefing.
 9. Κάθε πηγή πρέπει να έχει πραγματικό URL που βρήκες στην αναζήτηση. Μην κατασκευάζεις URLs.
 10. Η περίληψη κάθε θέματος να είναι 1-3 προτάσεις. Το "why_it_matters" να εξηγεί πρακτικά γιατί αξίζει προσοχή από τον Δήμο Πρεσπών.
 11. Οι κατηγορίες να είναι σύντομες, π.χ. Πρέσπες, Χρηματοδοτήσεις, Περιβάλλον, ΔΑΜ/Ενέργεια, Αγροτικά, Πολιτική Προστασία, Διασυνοριακά, Τουρισμός/Πολιτισμός, Αυτοδιοίκηση, Υγεία/Κοινωνία.
@@ -204,6 +308,8 @@ ${SOURCE_GUIDE}
       },
       body: JSON.stringify({
         model,
+        background: true,
+        store: true,
         instructions: 'Είσαι αναλυτής τοπικής και περιφερειακής επικαιρότητας. Ερευνάς σχολαστικά, αποφεύγεις διπλοεγγραφές και δεν επινοείς πηγές ή γεγονότα.',
         input: prompt,
         tools: [{
@@ -217,6 +323,8 @@ ${SOURCE_GUIDE}
           }
         }],
         tool_choice: 'auto',
+        max_tool_calls: 12,
+        max_output_tokens: 7000,
         text: {
           format: {
             type: 'json_schema',
@@ -226,8 +334,7 @@ ${SOURCE_GUIDE}
           },
           verbosity: 'medium'
         },
-        reasoning: { effort: 'low' },
-        store: false
+        reasoning: { effort: 'low' }
       })
     });
   } catch (error) {
@@ -241,21 +348,11 @@ ${SOURCE_GUIDE}
     });
   }
 
-  const text = extractOutputText(raw);
-  if (!text) return jsonResponse(502, { error: 'Το μοντέλο δεν επέστρεψε briefing.' });
+  if (!raw?.id) return jsonResponse(502, { error: 'Η OpenAI δεν επέστρεψε response ID.' });
 
-  let result;
-  try {
-    result = JSON.parse(text);
-  } catch {
-    return jsonResponse(502, { error: 'Το briefing επέστρεψε σε μη αναμενόμενη μορφή.' });
-  }
-
-  // Final deterministic guard for the requested minimum importance.
-  const minRank = importanceRank[minImportance];
-  result.stories = (result.stories || []).filter(s => importanceRank[s.importance] >= minRank);
-  result.generated_at = `Δημιουργήθηκε ${endDateTime} (ώρα Ελλάδας)`;
-  result.period_label = periodLabel;
-
-  return jsonResponse(200, result);
+  return jsonResponse(202, {
+    status: raw.status || 'queued',
+    responseId: raw.id,
+    period_label: periodLabel
+  });
 };
