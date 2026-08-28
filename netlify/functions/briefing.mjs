@@ -269,6 +269,12 @@ export default async (request) => {
         return rateLimitResponse(raw);
       }
       const detail = raw?.error?.message || raw?.incomplete_details?.reason || raw?.status || 'unknown';
+      if (raw?.incomplete_details?.reason === 'max_output_tokens') {
+        return jsonResponse(409, {
+          code: 'output_limit',
+          error: 'Το μοντέλο έφτασε στο όριο εξόδου πριν ολοκληρώσει το briefing.'
+        });
+      }
       return jsonResponse(502, { error: `Το briefing δεν ολοκληρώθηκε (${detail}).` });
     }
 
@@ -298,6 +304,10 @@ export default async (request) => {
   const endDateTime = dateTimeInAthens(now);
   const startDateTime = dateTimeInAthens(shiftHours(now, -hours));
   const periodLabel = periodLabelFor(hours);
+  const compact = body.compact === true;
+  const outputRules = compact
+    ? `ΕΠΙΠΛΕΟΝ ΚΑΝΟΝΑΣ ΣΥΝΤΟΜΗΣ ΕΞΟΔΟΥ: Επέστρεψε έως 4 θέματα. Κάθε summary και why_it_matters να είναι το πολύ 1 σύντομη πρόταση. Έως 2 πηγές ανά θέμα. Το executive_summary να είναι έως 2 προτάσεις και το watch_next έως 3 σημεία.`
+    : `ΕΠΙΠΛΕΟΝ ΚΑΝΟΝΑΣ ΕΞΟΔΟΥ: Επέστρεψε έως 6 θέματα. Κάθε summary να είναι 1-2 σύντομες προτάσεις, το why_it_matters 1 σύντομη πρόταση και έως 3 πηγές ανά θέμα.`;
 
   const prompt = `
 Ετοίμασε ένα αυστηρά τεκμηριωμένο briefing για την Περιφερειακή Ενότητα Φλώρινας με ιδιαίτερη έμφαση στον Δήμο Πρεσπών.
@@ -319,12 +329,14 @@ ${sourceGuideFor(sourceCategories)}
 5. Απόρριψε κοινωνικές αγγελίες, κηδείες, γενικές αθλητικές ανακοινώσεις και χαμηλής αξίας εκδηλώσεις, εκτός αν έχουν σαφή δημόσια/στρατηγική σημασία.
 6. Για κάθε θέμα δώσε importance = high / medium / low ως προς τη χρησιμότητά του για έναν Δήμο όπως ο Δήμος Πρεσπών. High = άμεση ενέργεια/ευκαιρία/κίνδυνος/απόφαση ή σημαντική πολιτική εξέλιξη. Medium = χρήσιμη ενημέρωση με πιθανή επίπτωση. Low = περιφερειακό context χωρίς άμεση δράση.
 7. Η επιλογή χρήστη απαιτεί ελάχιστη σημασία "${minImportance}". Μην επιστρέψεις θέματα χαμηλότερα από αυτό το επίπεδο.
-8. Κράτησε 5-8 πραγματικά σημαντικά θέματα. Αν υπάρχουν λιγότερα, επέστρεψε λιγότερα. Μην γεμίζεις τεχνητά το briefing.
+8. Κράτησε μόνο τα πραγματικά σημαντικά θέματα. Αν υπάρχουν λιγότερα, επέστρεψε λιγότερα. Μην γεμίζεις τεχνητά το briefing.
 9. Κάθε πηγή πρέπει να έχει πραγματικό URL που βρήκες στην αναζήτηση. Μην κατασκευάζεις URLs.
-10. Η περίληψη κάθε θέματος να είναι 1-3 προτάσεις. Το "why_it_matters" να εξηγεί πρακτικά γιατί αξίζει προσοχή από τον Δήμο Πρεσπών.
+10. Γράψε πυκνά και σύντομα. Το "why_it_matters" να εξηγεί πρακτικά γιατί αξίζει προσοχή από τον Δήμο Πρεσπών.
 11. Οι κατηγορίες να είναι σύντομες, π.χ. Πρέσπες, Χρηματοδοτήσεις, Περιβάλλον, ΔΑΜ/Ενέργεια, Αγροτικά, Πολιτική Προστασία, Διασυνοριακά, Τουρισμός/Πολιτισμός, Αυτοδιοίκηση, Υγεία/Κοινωνία.
-12. Στο watch_next βάλε 3-5 εξελίξεις που αξίζει να παρακολουθούνται τις επόμενες ημέρες, μόνο αν προκύπτουν από το υλικό.
+12. Στο watch_next βάλε μόνο ουσιαστικές εξελίξεις που αξίζει να παρακολουθούνται τις επόμενες ημέρες, μόνο αν προκύπτουν από το υλικό.
 13. Γράψε στα ελληνικά, καθαρά και χωρίς υπερβολές.
+
+${outputRules}
 `;
 
   const model = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
@@ -354,8 +366,8 @@ ${sourceGuideFor(sourceCategories)}
           }
         }],
         tool_choice: 'auto',
-        max_tool_calls: 9,
-        max_output_tokens: 4000,
+        max_tool_calls: 7,
+        max_output_tokens: 7000,
         text: {
           format: {
             type: 'json_schema',
@@ -365,7 +377,7 @@ ${sourceGuideFor(sourceCategories)}
           },
           verbosity: 'low'
         },
-        reasoning: { effort: 'low' }
+        reasoning: { effort: 'none' }
       })
     });
   } catch (error) {
