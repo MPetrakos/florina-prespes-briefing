@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c4a3b" />
+  <title>Florina & Prespes Briefing</title>
+  <meta name="description" content="Ζωντανό briefing ενημέρωσης για Φλώρινα, Αμύνταιο και Πρέσπες." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="brand-mark" aria-hidden="true">Π</div>
+      <div>
+        <p class="eyebrow">LOCAL INTELLIGENCE</p>
+        <h1>Briefing Φλώρινας & Πρεσπών</h1>
+        <p class="lead">Ζωντανή αναζήτηση σε τοπικά ΜΜΕ και θεσμικές πηγές, με έμφαση σε ό,τι έχει σημασία για τις Πρέσπες.</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel controls" aria-labelledby="controls-title">
+        <div class="panel-head">
+          <div>
+            <p class="section-kicker">Αναζήτηση</p>
+            <h2 id="controls-title">Τρέξε νέο briefing</h2>
+          </div>
+          <span class="status-pill" id="statusPill">Έτοιμο</span>
+        </div>
+
+        <div class="control-grid">
+          <label>
+            <span>Χρονικό παράθυρο</span>
+            <select id="hours">
+              <option value="12">Τελευταίες 12 ώρες</option>
+              <option value="24" selected>Τελευταίες 24 ώρες</option>
+              <option value="72">Τελευταίες 3 ημέρες</option>
+              <option value="168">Τελευταίες 7 ημέρες</option>
+              <option value="720">Τελευταίες 30 ημέρες</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Εστίαση</span>
+            <select id="focus">
+              <option value="all">Όλα τα σημαντικά θέματα</option>
+              <option value="prespes">Μόνο Πρέσπες / άμεσο ενδιαφέρον</option>
+              <option value="funding">Χρηματοδοτήσεις / έργα / προγράμματα</option>
+              <option value="environment">Περιβάλλον / νερά / Natura</option>
+              <option value="energy">ΔΑΜ / ενέργεια / απολιγνιτοποίηση</option>
+              <option value="crossborder">Σύνορα / Αλβανία / Βόρεια Μακεδονία</option>
+              <option value="civil">Πολιτική προστασία / υποδομές</option>
+              <option value="agri">Αγροτικά / πρωτογενής τομέας</option>
+              <option value="tourism">Τουρισμός / πολιτισμός</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Ελάχιστη σημασία για Πρέσπες</span>
+            <select id="importance">
+              <option value="low">Χαμηλή και άνω</option>
+              <option value="medium" selected>Μέση και άνω</option>
+              <option value="high">Μόνο υψηλή</option>
+            </select>
+          </label>
+        </div>
+
+        <details class="sources-box">
+          <summary>Πηγές που παρακολουθούνται</summary>
+          <div class="source-groups">
+            <div>
+              <h3>Τοπικά ΜΜΕ</h3>
+              <p>Νέα Φλώρινα, ΕΡΤ Φλώρινας, FlorinaPress, Ράδιο Λέχοβο, Floriniotika, Περισκόπιο Αμυνταίου.</p>
+            </div>
+            <div>
+              <h3>Θεσμικές</h3>
+              <p>ΠΕ Φλώρινας, Περιφέρεια Δυτικής Μακεδονίας, Δήμοι Φλώρινας / Αμυνταίου / Πρεσπών, ΟΦΥΠΕΚΑ, ΥΠΠΟ, Επιμελητήριο, ΑΝΦΛΩ.</p>
+            </div>
+            <div>
+              <h3>Περιφερειακές / ειδικές</h3>
+              <p>Kozan.gr, KozaniMedia, EordaiaLive, ΔΑΜ, ΕΛ.ΑΣ., Πυροσβεστική και συναφείς πρωτογενείς πηγές.</p>
+            </div>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button id="runBtn" class="primary-btn" type="button">
+            <span class="btn-icon">↻</span>
+            Τρέξε briefing
+          </button>
+          <button id="clearBtn" class="ghost-btn" type="button">Καθαρισμός</button>
+        </div>
+
+        <p class="hint">Η εφαρμογή κάνει web search μόνο όταν πατάς το κουμπί. Δεν εκτελείται αυτόματα και δεν έχει scheduler.</p>
+      </section>
+
+      <section id="emptyState" class="empty-state">
+        <div class="empty-icon">◎</div>
+        <h2>Έτοιμο για αναζήτηση</h2>
+        <p>Επίλεξε χρονικό παράθυρο και εστίαση και πάτησε «Τρέξε briefing».</p>
+      </section>
+
+      <section id="loadingState" class="loading-state hidden" aria-live="polite">
+        <div class="spinner"></div>
+        <h2>Σαρώνω τις πηγές…</h2>
+        <p id="loadingText">Εντοπίζω νέες δημοσιεύσεις, αφαιρώ διπλοεγγραφές και αξιολογώ τη σημασία τους.</p>
+      </section>
+
+      <section id="errorState" class="error-state hidden" role="alert">
+        <h2>Δεν ολοκληρώθηκε το briefing</h2>
+        <p id="errorText"></p>
+      </section>
+
+      <section id="results" class="results hidden" aria-live="polite">
+        <div class="result-topline">
+          <div>
+            <p class="section-kicker">Τρέχον briefing</p>
+            <h2 id="resultTitle">Σημαντικότερα θέματα</h2>
+          </div>
+          <div class="run-meta" id="runMeta"></div>
+        </div>
+
+        <div id="executiveSummary" class="summary-card"></div>
+
+        <div class="section-title-row">
+          <h2>Κύρια θέματα</h2>
+          <span id="storyCount"></span>
+        </div>
+        <div id="stories" class="stories"></div>
+
+        <section class="watch-card">
+          <div class="section-title-row">
+            <h2>Τι αξίζει να παρακολουθήσουμε</h2>
+          </div>
+          <ol id="watchList"></ol>
+        </section>
+
+        <section class="source-card">
+          <div class="section-title-row">
+            <h2>Πηγές του briefing</h2>
+          </div>
+          <div id="sourcesList" class="source-links"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>Florina & Prespes Briefing</span>
+      <span>•</span>
+      <span>On-demand web intelligence</span>
+    </footer>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
