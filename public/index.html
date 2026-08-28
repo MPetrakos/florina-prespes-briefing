@@ -66,23 +66,50 @@
           </label>
         </div>
 
-        <details class="sources-box">
-          <summary>Πηγές που παρακολουθούνται</summary>
-          <div class="source-groups">
+        <fieldset class="source-filter" aria-labelledby="source-filter-title">
+          <div class="source-filter-head">
             <div>
-              <h3>Τοπικά ΜΜΕ</h3>
-              <p>Νέα Φλώρινα, ΕΡΤ Φλώρινας, FlorinaPress, Ράδιο Λέχοβο, Floriniotika, Περισκόπιο Αμυνταίου.</p>
+              <span class="field-label" id="source-filter-title">Κατηγορίες πηγών</span>
+              <p>Επίλεξε μία ή περισσότερες ομάδες. Η έρευνα θα περιοριστεί στις επιλεγμένες κατηγορίες.</p>
             </div>
-            <div>
-              <h3>Θεσμικές</h3>
-              <p>ΠΕ Φλώρινας, Περιφέρεια Δυτικής Μακεδονίας, Δήμοι Φλώρινας / Αμυνταίου / Πρεσπών, ΟΦΥΠΕΚΑ, ΥΠΠΟ, Επιμελητήριο, ΑΝΦΛΩ.</p>
-            </div>
-            <div>
-              <h3>Περιφερειακές / ειδικές</h3>
-              <p>Kozan.gr, KozaniMedia, EordaiaLive, ΔΑΜ, ΕΛ.ΑΣ., Πυροσβεστική και συναφείς πρωτογενείς πηγές.</p>
+            <div class="source-filter-actions">
+              <button id="selectAllSources" class="mini-btn" type="button">Όλες</button>
+              <button id="clearAllSources" class="mini-btn" type="button">Καμία</button>
             </div>
           </div>
-        </details>
+
+          <div class="source-check-grid">
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="local_media" checked>
+              <span><strong>Τοπικά ΜΜΕ</strong><small>Νέα Φλώρινα, ΕΡΤ Φλώρινας, FlorinaPress, Ράδιο Λέχοβο, Floriniotika, Περισκόπιο.</small></span>
+            </label>
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="regional_media" checked>
+              <span><strong>Περιφερειακά ΜΜΕ</strong><small>Kozan.gr, KozaniMedia, EordaiaLive και συναφή μέσα Δυτικής Μακεδονίας.</small></span>
+            </label>
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="institutions" checked>
+              <span><strong>Αυτοδιοίκηση & θεσμικές</strong><small>Δήμοι, ΠΕ Φλώρινας, Περιφέρεια Δυτικής Μακεδονίας, Διαύγεια.</small></span>
+            </label>
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="prespes_environment" checked>
+              <span><strong>Πρέσπες & περιβάλλον</strong><small>ΟΦΥΠΕΚΑ, Εταιρία Προστασίας Πρεσπών και σχετικές πρωτογενείς πηγές.</small></span>
+            </label>
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="economy_funding" checked>
+              <span><strong>Οικονομία, έργα & χρηματοδοτήσεις</strong><small>ΔΑΜ, Επιμελητήριο, ΑΝΦΛΩ και επίσημες διαχειριστικές / χρηματοδοτικές πηγές.</small></span>
+            </label>
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="safety" checked>
+              <span><strong>Πολιτική προστασία & ασφάλεια</strong><small>ΕΛ.ΑΣ., Πυροσβεστική και επίσημες πηγές πολιτικής προστασίας.</small></span>
+            </label>
+            <label class="source-check">
+              <input class="source-category" type="checkbox" value="culture_education" checked>
+              <span><strong>Πολιτισμός & εκπαίδευση</strong><small>ΥΠΠΟ / Εφορεία Αρχαιοτήτων Φλώρινας, Πανεπιστήμιο Δυτικής Μακεδονίας και συναφείς πηγές.</small></span>
+            </label>
+          </div>
+          <p id="sourceSelectionHint" class="source-selection-hint">Επιλεγμένες: 7 από 7 κατηγορίες</p>
+        </fieldset>
 
         <div class="actions">
           <button id="runBtn" class="primary-btn" type="button">

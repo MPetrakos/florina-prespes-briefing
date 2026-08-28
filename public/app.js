@@ -61,7 +61,7 @@ function setLoading(isLoading) {
 
 function renderBriefing(data) {
   $('resultTitle').textContent = data.title || 'Σημαντικότερα θέματα';
-  $('runMeta').innerHTML = `${escapeHtml(data.period_label || '')}<br>${escapeHtml(data.generated_at || '')}`;
+  $('runMeta').innerHTML = `${escapeHtml(data.period_label || '')}<br>${escapeHtml(data.source_categories_label ? `Πηγές: ${data.source_categories_label}` : '')}${data.source_categories_label ? '<br>' : ''}${escapeHtml(data.generated_at || '')}`;
 
   $('executiveSummary').innerHTML = `
     <h3>Σύνοψη</h3>
@@ -119,22 +119,91 @@ function renderBriefing(data) {
   showOnly(results);
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function postBriefing(payload) {
+  const response = await fetch('/api/briefing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
+function selectedSourceCategories() {
+  return [...document.querySelectorAll('.source-category:checked')].map(input => input.value);
+}
+
+function updateSourceSelectionHint() {
+  const total = document.querySelectorAll('.source-category').length;
+  const selected = selectedSourceCategories().length;
+  const hint = $('sourceSelectionHint');
+  hint.textContent = `Επιλεγμένες: ${selected} από ${total} κατηγορίες`;
+  hint.classList.toggle('warning', selected === 0);
+  runBtn.disabled = selected === 0 || statusPill.textContent.includes('Αναζήτηση') || statusPill.textContent.includes('εξέλιξη') || statusPill.textContent.includes('αναμονή') || statusPill.textContent.includes('σύνθεση');
+}
+
 async function runBriefing() {
   setLoading(true);
+  const hours = Number($('hours').value);
+  const focus = $('focus').value;
+  const minImportance = $('importance').value;
+  const sourceCategories = selectedSourceCategories();
+
+  if (!sourceCategories.length) {
+    $('errorText').textContent = 'Επίλεξε τουλάχιστον μία κατηγορία πηγών.';
+    statusPill.textContent = 'Χρειάζεται επιλογή';
+    showOnly(errorState);
+    setLoading(false);
+    updateSourceSelectionHint();
+    return;
+  }
+
   try {
-    const response = await fetch('/api/briefing', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        hours: Number($('hours').value),
-        focus: $('focus').value,
-        minImportance: $('importance').value
-      })
+    // Start the OpenAI job in background mode. This should return quickly with an ID.
+    let { response, data } = await postBriefing({
+      action: 'start',
+      hours,
+      focus,
+      minImportance,
+      sourceCategories
     });
 
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
-    renderBriefing(payload);
+    if (!response.ok && response.status !== 202) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    if (!data.responseId) throw new Error('Δεν επιστράφηκε response ID από τον server.');
+
+    const responseId = data.responseId;
+    statusPill.textContent = 'Έρευνα σε εξέλιξη…';
+    $('loadingText').textContent = 'Η έρευνα ξεκίνησε. Ελέγχω την πρόοδο χωρίς να διακόπτω το briefing…';
+
+    // Poll. Each status request is short, so it avoids Netlify's 60-second synchronous timeout.
+    for (let attempt = 0; attempt < 180; attempt++) {
+      await sleep(3000);
+      ({ response, data } = await postBriefing({
+        action: 'status',
+        responseId,
+        hours,
+        minImportance,
+        sourceCategories
+      }));
+
+      if (response.status === 202) {
+        const state = data.status === 'queued' ? 'Σε αναμονή…' : 'Αναζήτηση & σύνθεση…';
+        statusPill.textContent = state;
+        continue;
+      }
+
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      renderBriefing(data);
+      return;
+    }
+
+    throw new Error('Το briefing συνεχίζει να επεξεργάζεται για υπερβολικά μεγάλο διάστημα. Δοκίμασε ξανά αργότερα.');
   } catch (error) {
     $('errorText').textContent = error.message || 'Άγνωστο σφάλμα.';
     statusPill.textContent = 'Σφάλμα';
@@ -154,3 +223,13 @@ function clearResults() {
 
 runBtn.addEventListener('click', runBriefing);
 clearBtn.addEventListener('click', clearResults);
+$('selectAllSources').addEventListener('click', () => {
+  document.querySelectorAll('.source-category').forEach(input => { input.checked = true; });
+  updateSourceSelectionHint();
+});
+$('clearAllSources').addEventListener('click', () => {
+  document.querySelectorAll('.source-category').forEach(input => { input.checked = false; });
+  updateSourceSelectionHint();
+});
+document.querySelectorAll('.source-category').forEach(input => input.addEventListener('change', updateSourceSelectionHint));
+updateSourceSelectionHint();
