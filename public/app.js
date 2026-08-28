@@ -154,6 +154,13 @@ class RateLimitError extends Error {
   }
 }
 
+class OutputLimitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'OutputLimitError';
+  }
+}
+
 async function waitForRateLimit(seconds) {
   const total = Math.max(5, Math.min(90, Math.ceil(seconds)));
   for (let remaining = total; remaining > 0; remaining--) {
@@ -163,13 +170,14 @@ async function waitForRateLimit(seconds) {
   }
 }
 
-async function startAndPollBriefing({ hours, focus, minImportance, sourceCategories }) {
+async function startAndPollBriefing({ hours, focus, minImportance, sourceCategories, compact = false }) {
   let { response, data } = await postBriefing({
     action: 'start',
     hours,
     focus,
     minImportance,
-    sourceCategories
+    sourceCategories,
+    compact
   });
 
   if (response.status === 429 && data.code === 'rate_limit') {
@@ -204,6 +212,10 @@ async function startAndPollBriefing({ hours, focus, minImportance, sourceCategor
       throw new RateLimitError(data.error || 'Προσωρινό όριο OpenAI API.', data.retry_after);
     }
 
+    if (response.status === 409 && data.code === 'output_limit') {
+      throw new OutputLimitError(data.error || 'Το briefing ξεπέρασε το όριο εξόδου.');
+    }
+
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     return data;
   }
@@ -228,21 +240,29 @@ async function runBriefing() {
   }
 
   try {
-    const params = { hours, focus, minImportance, sourceCategories };
+    const params = { hours, focus, minImportance, sourceCategories, compact: false };
+    let rateRetries = 0;
+    let compactRetryUsed = false;
 
-    // Up to two automatic retries. A rate-limit failure is temporary and the
-    // API tells us approximately how long to wait before submitting again.
-    for (let retry = 0; retry <= 2; retry++) {
+    while (true) {
       try {
         const data = await startAndPollBriefing(params);
         renderBriefing(data);
         return;
       } catch (error) {
-        if (error instanceof RateLimitError && retry < 2) {
-          const extraBackoff = retry * 5;
+        if (error instanceof RateLimitError && rateRetries < 2) {
+          const extraBackoff = rateRetries * 5;
+          rateRetries += 1;
           await waitForRateLimit(error.retryAfter + extraBackoff);
           statusPill.textContent = 'Επανάληψη έρευνας…';
           $('loadingText').textContent = 'Το όριο αποδεσμεύτηκε. Ξεκινώ ξανά το briefing αυτόματα…';
+          continue;
+        }
+        if (error instanceof OutputLimitError && !compactRetryUsed) {
+          compactRetryUsed = true;
+          params.compact = true;
+          statusPill.textContent = 'Σύντομη επανάληψη…';
+          $('loadingText').textContent = 'Η πρώτη απάντηση ήταν μεγαλύτερη από το επιτρεπτό όριο. Επαναλαμβάνω αυτόματα με πιο συμπαγές briefing…';
           continue;
         }
         throw error;
