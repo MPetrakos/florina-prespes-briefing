@@ -146,6 +146,71 @@ function updateSourceSelectionHint() {
   runBtn.disabled = selected === 0 || statusPill.textContent.includes('Αναζήτηση') || statusPill.textContent.includes('εξέλιξη') || statusPill.textContent.includes('αναμονή') || statusPill.textContent.includes('σύνθεση');
 }
 
+class RateLimitError extends Error {
+  constructor(message, retryAfter = 15) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfter = Number.isFinite(Number(retryAfter)) ? Number(retryAfter) : 15;
+  }
+}
+
+async function waitForRateLimit(seconds) {
+  const total = Math.max(5, Math.min(90, Math.ceil(seconds)));
+  for (let remaining = total; remaining > 0; remaining--) {
+    statusPill.textContent = `Όριο API · ${remaining}s`;
+    $('loadingText').textContent = `Το OpenAI API έφτασε προσωρινά το όριο tokens/minute. Αυτόματη επανάληψη σε ${remaining} δευτ.…`;
+    await sleep(1000);
+  }
+}
+
+async function startAndPollBriefing({ hours, focus, minImportance, sourceCategories }) {
+  let { response, data } = await postBriefing({
+    action: 'start',
+    hours,
+    focus,
+    minImportance,
+    sourceCategories
+  });
+
+  if (response.status === 429 && data.code === 'rate_limit') {
+    throw new RateLimitError(data.error || 'Προσωρινό όριο OpenAI API.', data.retry_after);
+  }
+  if (!response.ok && response.status !== 202) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  if (!data.responseId) throw new Error('Δεν επιστράφηκε response ID από τον server.');
+
+  const responseId = data.responseId;
+  statusPill.textContent = 'Έρευνα σε εξέλιξη…';
+  $('loadingText').textContent = 'Η έρευνα ξεκίνησε. Ελέγχω την πρόοδο χωρίς να διακόπτω το briefing…';
+
+  for (let attempt = 0; attempt < 180; attempt++) {
+    await sleep(3000);
+    ({ response, data } = await postBriefing({
+      action: 'status',
+      responseId,
+      hours,
+      minImportance,
+      sourceCategories
+    }));
+
+    if (response.status === 202) {
+      const state = data.status === 'queued' ? 'Σε αναμονή…' : 'Αναζήτηση & σύνθεση…';
+      statusPill.textContent = state;
+      continue;
+    }
+
+    if (response.status === 429 && data.code === 'rate_limit') {
+      throw new RateLimitError(data.error || 'Προσωρινό όριο OpenAI API.', data.retry_after);
+    }
+
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }
+
+  throw new Error('Το briefing συνεχίζει να επεξεργάζεται για υπερβολικά μεγάλο διάστημα. Δοκίμασε ξανά αργότερα.');
+}
+
 async function runBriefing() {
   setLoading(true);
   const hours = Number($('hours').value);
@@ -163,47 +228,26 @@ async function runBriefing() {
   }
 
   try {
-    // Start the OpenAI job in background mode. This should return quickly with an ID.
-    let { response, data } = await postBriefing({
-      action: 'start',
-      hours,
-      focus,
-      minImportance,
-      sourceCategories
-    });
+    const params = { hours, focus, minImportance, sourceCategories };
 
-    if (!response.ok && response.status !== 202) {
-      throw new Error(data.error || `HTTP ${response.status}`);
-    }
-    if (!data.responseId) throw new Error('Δεν επιστράφηκε response ID από τον server.');
-
-    const responseId = data.responseId;
-    statusPill.textContent = 'Έρευνα σε εξέλιξη…';
-    $('loadingText').textContent = 'Η έρευνα ξεκίνησε. Ελέγχω την πρόοδο χωρίς να διακόπτω το briefing…';
-
-    // Poll. Each status request is short, so it avoids Netlify's 60-second synchronous timeout.
-    for (let attempt = 0; attempt < 180; attempt++) {
-      await sleep(3000);
-      ({ response, data } = await postBriefing({
-        action: 'status',
-        responseId,
-        hours,
-        minImportance,
-        sourceCategories
-      }));
-
-      if (response.status === 202) {
-        const state = data.status === 'queued' ? 'Σε αναμονή…' : 'Αναζήτηση & σύνθεση…';
-        statusPill.textContent = state;
-        continue;
+    // Up to two automatic retries. A rate-limit failure is temporary and the
+    // API tells us approximately how long to wait before submitting again.
+    for (let retry = 0; retry <= 2; retry++) {
+      try {
+        const data = await startAndPollBriefing(params);
+        renderBriefing(data);
+        return;
+      } catch (error) {
+        if (error instanceof RateLimitError && retry < 2) {
+          const extraBackoff = retry * 5;
+          await waitForRateLimit(error.retryAfter + extraBackoff);
+          statusPill.textContent = 'Επανάληψη έρευνας…';
+          $('loadingText').textContent = 'Το όριο αποδεσμεύτηκε. Ξεκινώ ξανά το briefing αυτόματα…';
+          continue;
+        }
+        throw error;
       }
-
-      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      renderBriefing(data);
-      return;
     }
-
-    throw new Error('Το briefing συνεχίζει να επεξεργάζεται για υπερβολικά μεγάλο διάστημα. Δοκίμασε ξανά αργότερα.');
   } catch (error) {
     $('errorText').textContent = error.message || 'Άγνωστο σφάλμα.';
     statusPill.textContent = 'Σφάλμα';
