@@ -178,6 +178,31 @@ function periodLabelFor(hours) {
   })[hours] || 'Τελευταίες 24 ώρες';
 }
 
+function parseRetryAfterSeconds(message = '', headerValue = '') {
+  const headerSeconds = Number(headerValue);
+  if (Number.isFinite(headerSeconds) && headerSeconds > 0) return Math.ceil(headerSeconds);
+
+  const match = String(message).match(/try again in\s+([0-9.]+)s/i);
+  if (match) return Math.ceil(Number(match[1]));
+  return 15;
+}
+
+function isRateLimitPayload(raw) {
+  const code = raw?.error?.code || raw?.code || '';
+  const type = raw?.error?.type || raw?.type || '';
+  const message = raw?.error?.message || raw?.message || '';
+  return code === 'rate_limit_exceeded' || type === 'rate_limit_error' || /rate limit reached|too many requests/i.test(message);
+}
+
+function rateLimitResponse(raw, retryHeader = '') {
+  const message = raw?.error?.message || raw?.message || 'Προσωρινό όριο ρυθμού OpenAI API.';
+  return jsonResponse(429, {
+    code: 'rate_limit',
+    retry_after: Math.min(90, Math.max(5, parseRetryAfterSeconds(message, retryHeader) + 2)),
+    error: message
+  });
+}
+
 async function retrieveResponse(apiKey, responseId) {
   return fetch(`${OPENAI_URL}/${encodeURIComponent(responseId)}`, {
     method: 'GET',
@@ -227,6 +252,9 @@ export default async (request) => {
 
     const raw = await upstream.json().catch(() => null);
     if (!upstream.ok) {
+      if (upstream.status === 429 || isRateLimitPayload(raw)) {
+        return rateLimitResponse(raw, upstream.headers.get('retry-after') || '');
+      }
       return jsonResponse(upstream.status, {
         error: raw?.error?.message || `OpenAI API error (${upstream.status}).`
       });
@@ -237,6 +265,9 @@ export default async (request) => {
     }
 
     if (raw?.status !== 'completed') {
+      if (isRateLimitPayload(raw)) {
+        return rateLimitResponse(raw);
+      }
       const detail = raw?.error?.message || raw?.incomplete_details?.reason || raw?.status || 'unknown';
       return jsonResponse(502, { error: `Το briefing δεν ολοκληρώθηκε (${detail}).` });
     }
@@ -288,7 +319,7 @@ ${sourceGuideFor(sourceCategories)}
 5. Απόρριψε κοινωνικές αγγελίες, κηδείες, γενικές αθλητικές ανακοινώσεις και χαμηλής αξίας εκδηλώσεις, εκτός αν έχουν σαφή δημόσια/στρατηγική σημασία.
 6. Για κάθε θέμα δώσε importance = high / medium / low ως προς τη χρησιμότητά του για έναν Δήμο όπως ο Δήμος Πρεσπών. High = άμεση ενέργεια/ευκαιρία/κίνδυνος/απόφαση ή σημαντική πολιτική εξέλιξη. Medium = χρήσιμη ενημέρωση με πιθανή επίπτωση. Low = περιφερειακό context χωρίς άμεση δράση.
 7. Η επιλογή χρήστη απαιτεί ελάχιστη σημασία "${minImportance}". Μην επιστρέψεις θέματα χαμηλότερα από αυτό το επίπεδο.
-8. Κράτησε 5-10 πραγματικά σημαντικά θέματα. Αν υπάρχουν λιγότερα, επέστρεψε λιγότερα. Μην γεμίζεις τεχνητά το briefing.
+8. Κράτησε 5-8 πραγματικά σημαντικά θέματα. Αν υπάρχουν λιγότερα, επέστρεψε λιγότερα. Μην γεμίζεις τεχνητά το briefing.
 9. Κάθε πηγή πρέπει να έχει πραγματικό URL που βρήκες στην αναζήτηση. Μην κατασκευάζεις URLs.
 10. Η περίληψη κάθε θέματος να είναι 1-3 προτάσεις. Το "why_it_matters" να εξηγεί πρακτικά γιατί αξίζει προσοχή από τον Δήμο Πρεσπών.
 11. Οι κατηγορίες να είναι σύντομες, π.χ. Πρέσπες, Χρηματοδοτήσεις, Περιβάλλον, ΔΑΜ/Ενέργεια, Αγροτικά, Πολιτική Προστασία, Διασυνοριακά, Τουρισμός/Πολιτισμός, Αυτοδιοίκηση, Υγεία/Κοινωνία.
@@ -323,8 +354,8 @@ ${sourceGuideFor(sourceCategories)}
           }
         }],
         tool_choice: 'auto',
-        max_tool_calls: 12,
-        max_output_tokens: 7000,
+        max_tool_calls: 9,
+        max_output_tokens: 4000,
         text: {
           format: {
             type: 'json_schema',
@@ -332,7 +363,7 @@ ${sourceGuideFor(sourceCategories)}
             strict: true,
             schema: responseSchema
           },
-          verbosity: 'medium'
+          verbosity: 'low'
         },
         reasoning: { effort: 'low' }
       })
